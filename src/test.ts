@@ -117,12 +117,14 @@ function getRandomHumidity(rng: seedrandom.prng): number {
 async function runTest(): Promise<void> {
   const rng = seedrandom(config.seed)
 
-  const count = 5000
+  const iterations = 5000
   const promises: Promise<unknown>[] = []
+
+  let requestCount = 0
 
   const startTime = performance.now()
 
-  for (let i = 0; i < count; ++i) {
+  for (let i = 0; i < iterations; ++i) {
     const region = getRandomRegion(rng)
     const city = getRandomCity(rng)
     const temperature = getRandomTemperature(rng)
@@ -131,11 +133,17 @@ async function runTest(): Promise<void> {
     promises.push(updateLocationData(city, region, { temperature }))
     promises.push(updateLocationData(city, region, { humidity }))
 
+    requestCount += 2
+
     if (i % 10 === 0) {
       let promise = getRegionAverageData(getRandomRegion(rng))
 
+      requestCount += 1
+
       if (i % 500 === 0) {
         promise = promise.then(() => getServerMemoryUsage())
+
+        requestCount += 1
       }
 
       promises.push(promise)
@@ -151,7 +159,10 @@ async function runTest(): Promise<void> {
   const totalTime = performance.now() - startTime
 
   console.info('test time:', totalTime, 'ms')
-  console.info('average request time:', totalTime / count, 'ms')
+
+  if (requestCount > 0) {
+    console.info('average request time:', totalTime / requestCount, 'ms')
+  }
 
   // eslint-disable-next-line no-console
   console.info('RESULT', result)
